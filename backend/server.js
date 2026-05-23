@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
 import connectDB from './config/db.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
@@ -14,66 +15,85 @@ import shipmentRoutes from './routes/shipmentRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 
-// Load Env variables
+// Load Environment Variables
 dotenv.config();
 
-// Connect to Database
+// Connect Database
 connectDB();
 
 const app = express();
 const server = http.createServer(app);
 
-// CORS setup
-app.use(cors({
-  origin: '*', // For development, allow all origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-}));
+// Frontend URL
+const FRONTEND_URL =
+  process.env.FRONTEND_URL || 'http://localhost:5173';
 
+// Middleware
 app.use(express.json());
 
-// Socket.IO Server Setup
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  })
+);
+
+// Socket.IO Setup
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: FRONTEND_URL,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  }
+  },
 });
 
-// Store io instance on app context to fetch inside controllers
+// Make io accessible inside controllers
 app.set('io', io);
 
-// Socket.IO Connection Handler
+// Socket Connection
 io.on('connection', (socket) => {
-  console.log(`Socket Client Connected: ${socket.id}`);
+  console.log(`Socket Connected: ${socket.id}`);
 
-  // Driver joins a specific shipment tracking room
+  // Join Shipment Room
   socket.on('joinShipmentTrack', (shipmentId) => {
     socket.join(shipmentId);
-    console.log(`Socket ${socket.id} joined tracking room for Shipment: ${shipmentId}`);
+
+    console.log(
+      `Socket ${socket.id} joined Shipment Room: ${shipmentId}`
+    );
   });
 
-  // Handle GPS location updates from Driver clients
+  // Driver Live GPS Update
   socket.on('driverLocationUpdate', (data) => {
-    const { shipmentId, lat, lng, address, speed, eta } = data;
-    console.log(`Live GPS from driver for Shipment ${shipmentId}: ${lat}, ${lng}`);
-    
-    // Broadcast coordinates to all clients watching this shipment
-    io.to(shipmentId).emit('liveLocationFeed', {
-      lat,
-      lng,
-      address,
-      speed,
-      eta,
-      timestamp: new Date(),
-    });
+    try {
+      const { shipmentId, lat, lng, address, speed, eta } = data;
+
+      console.log(
+        `Shipment ${shipmentId} Location Updated -> ${lat}, ${lng}`
+      );
+
+      // Broadcast to shipment room
+      io.to(shipmentId).emit('liveLocationFeed', {
+        lat,
+        lng,
+        address,
+        speed,
+        eta,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Socket Location Update Error:', error.message);
+    }
   });
 
+  // Disconnect
   socket.on('disconnect', () => {
-    console.log(`Socket Client Disconnected: ${socket.id}`);
+    console.log(`Socket Disconnected: ${socket.id}`);
   });
 });
 
-// REST Endpoints
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/drivers', driverRoutes);
@@ -81,17 +101,28 @@ app.use('/api/shipments', shipmentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Root test route
+// Root Route
 app.get('/', (req, res) => {
-  res.json({ message: 'Transport & Logistics Management API is running...' });
+  res.status(200).json({
+    success: true,
+    message: 'Transport & Logistics Management API is running...',
+  });
 });
 
-// Error handling middleware
+// 404 Middleware
 app.use(notFound);
+
+// Error Middleware
 app.use(errorHandler);
 
+// Port
 const PORT = process.env.PORT || 5000;
 
+// Start Server
 server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(
+    `Server running in ${
+      process.env.NODE_ENV || 'development'
+    } mode on port ${PORT}`
+  );
 });
