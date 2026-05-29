@@ -11,6 +11,7 @@ export const CardSkeleton = () => (
   </div>
 );
 
+
 export const ChartSkeleton = () => (
   <div className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-xl p-6 h-80 animate-pulse flex flex-col justify-between">
     <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded"></div>
