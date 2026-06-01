@@ -11,7 +11,6 @@ export const getDashboardStats = async (req, res, next) => {
     const inTransitShipments = await Shipment.countDocuments({ status: 'In Transit' });
     const delayedShipments = await Shipment.countDocuments({ status: 'Delayed' });
     const pendingShipments = await Shipment.countDocuments({ status: 'Pending' });
-
     const totalVehicles = await Vehicle.countDocuments();
     const activeVehicles = await Vehicle.countDocuments({ status: 'In Transit' });
     const maintenanceVehicles = await Vehicle.countDocuments({ status: 'Maintenance' });
