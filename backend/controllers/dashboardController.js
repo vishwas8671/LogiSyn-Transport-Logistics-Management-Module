@@ -1,7 +1,6 @@
 import Shipment from '../models/Shipment.js';
 import Vehicle from '../models/Vehicle.js';
 import Driver from '../models/Driver.js';
-
 // @desc    Get dashboard aggregated analytics
 // @route   GET /api/dashboard/stats
 // @access  Private
